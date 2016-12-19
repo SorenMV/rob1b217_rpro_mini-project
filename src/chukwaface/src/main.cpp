@@ -67,9 +67,21 @@ private:
 		  	
 			cin >> choice;
 
-			// TODO: Publish a choice
+			std_msgs::String command;
+			switch(choice)
+			{
+				case(1):
+					command.data = "SHAPE 1";
+					break;
+				case(2):
+					command.data = "SHAPE 2";
+					break;
+			}
+
+			// publish the SHAPE command
+			command_pub.publish(command);
 	
-		}while(choice != 0 && ros::ok());
+		}while(choice != 0 || ros::ok());
 	}
 
 	// This function gets called when user wants to change the LEDs
@@ -108,7 +120,7 @@ private:
 			// publish the LED command
 			command_pub.publish(command);
 			
-		} while(choice != 0 && ros::ok());
+		} while(choice != 0 || ros::ok());
 			
 	}
 
@@ -136,7 +148,7 @@ private:
 		  	
 			cin >> choice;
 			
-		}while(choice != 0 && ros::ok());
+		}while(choice != 0 || ros::ok());
 	}
 
 	// This function gets called when user wants to see "Help" 
@@ -155,7 +167,7 @@ private:
 		  	
 			cin >> choice;
 			
-		}while(choice != 0 && ros::ok());
+		}while(choice != 0 || ros::ok());
 	}
 
 	// This function gets called to start the interface
@@ -193,9 +205,12 @@ private:
 			 	case(9):
 			 		showHelp();
 			 		break;
+			 	case(0):
+			 	 ros::shutdown();
+			 	// signal(SIGINT, mySigintHandler);
 			}
 			
-		}while(choice != 0 && ros::ok());
+		}while(choice != 0 || ros::ok());
 	}
 
 public:

@@ -9,13 +9,20 @@
 // For using strings
 #include <string>
 
+// Message used to move the mobile base the Kobuki
+#include <geometry_msgs/Twist.h>
+
 // To publish to LED on kobuki
 #include <kobuki_msgs/Led.h>
+
+// Message used to play the sound on the Kobuki
+#include <kobuki_msgs/Sound.h>
 
 // Count of predefined shapes
 #define shapes_count 2
 
 using namespace std;
+
 
 class Chukwashape
 {
@@ -27,15 +34,28 @@ private:
 	ros::Publisher led1_pub;
 	ros::Publisher led2_pub;
 	ros::Publisher party_pub;
+	ros::Publisher chukwa_move_pub;
+  	ros::Timer chukwa_shape_timer;
+  	ros::Publisher chukwa_sound_pub;
 	ros::Timer party_timer;
 	kobuki_msgs::Led led1;
 	kobuki_msgs::Led led2;
-	bool startParty;
+
+	geometry_msgs::Twist chukwa_twist;
+  	kobuki_msgs::Sound chukwa_sound;
+
+  	bool startParty;
+	int step, counter_for_timer;
+
+
+  	int pattern[10][2]={{100,0},{0,47},{100,0},{0,47},{100,0},{0,47},{100,0},{0,47}};
+	int diamond[10][2]={{150,0},{0,43},{24,0},{0,20},{52,0},{0,20},{24,0},{0,43},{65,0},{0,43}};
+	int square[8][2]={{100,0},{0,47},{100,0},{0,47},{100,0},{0,47},{100,0},{0,47}};
+
 
 	// Struct with the shapes (Known size)
 	struct ShapeStruct{
 		string name;
-		int est_time; // Not in use
 	} shapes[shapes_count];
 
 	// When a command is published by interface
@@ -60,8 +80,13 @@ private:
 		else if(command_name == "UPDATE")
 		{
 			publishShapes();
+		}	
+		else if(command_name == "SHAPE")
+		{	
+				publishShapes();
+			moveChukwa(command_rest);
 		}
-		else if(command_name == "LED")
+		else if(command_name ==  "LED")
 		{
 			controlLEDs(command_rest);
 		}
@@ -70,8 +95,80 @@ private:
 	// Make the Chukwa move in a shape
 	void moveChukwa(const string& shape)
 	{
-		// Run the shape
+		if (shape == "1")
+		{
+			//copy_array(square, pattern);
+			chukwa_shape_timer.start();
+		}
+		else
+		if (shape == "2")
+		{
+			copy_array(diamond, pattern);
+			chukwa_shape_timer.start();
+		}
 	}
+
+	void copy_array(int copyfrom[][2], int copyto[][2])
+	{
+	for (int i = 1; i < 11; ++i)
+	{
+	  for (int j = 1; j < 3; ++j)
+	  {
+	    copyto[i][j]=copyfrom[i][j];
+	  }
+	}
+	}
+
+	void publishing(const ros::TimerEvent&)
+  {
+
+    //moving forward
+    if (pattern[step][1] == 0 && counter_for_timer > pattern[step][0])
+    {
+      next_step();
+    }
+    else
+    //turning
+    if (pattern[step][0] == 0 && counter_for_timer > pattern[step][1])
+    {
+      next_step();
+    }
+
+    chukwa_move_pub.publish(chukwa_twist);
+    counter_for_timer++;
+  }
+
+  void next_step()
+  {
+    if (step < sizeof(pattern)/sizeof(pattern)[0])
+    {
+    step++;
+    counter_for_timer = 0;
+
+    chukwa_sound_pub.publish(chukwa_sound);
+
+    ros::Duration(1).sleep();
+
+    //moving forward
+    if (pattern[step][1] == 0)
+    {
+      chukwa_twist.linear.x   = 0.25;
+      chukwa_twist.angular.z   = 0;
+    }
+
+    //turning
+    if (pattern[step][0] == 0)
+    {
+      chukwa_twist.linear.x   = 0;
+      chukwa_twist.angular.z   = 0.7853981633974483;
+    }
+    }
+    else
+      {
+        chukwa_shape_timer.stop();
+        step=0;
+      }
+  }
 
 	// Called to control the LEDs
 	void controlLEDs(const string& led)
@@ -110,16 +207,16 @@ private:
 			GREEN   = 1
 			ORANGE  = 2
 			RED     = 3 */
-			led1.value = rand() % 3; // Change led1 to a random value between 0-3
+			led1.value = rand() % 4; // Change led1 to a random value between 0-3
 			led1_pub.publish(led1);
 					
-			led2.value = rand() % 3; // Change led1 to a random value between 0-3
+			led2.value = rand() % 4; // Change led1 to a random value between 0-3
 			led2_pub.publish(led2);
 		}
 	}
 
 	// This function publishes all the possible shape's name as a string with spaces
-	// Ex: "STAR SQUARE"
+	// Ex: "SQUARE DIAMOND"
 	void publishShapes()
 	{
 		std_msgs::String all_shapes;
@@ -138,7 +235,8 @@ private:
 		shape_publisher.getNumSubscribers();
 
 		// If no subscribers spin once and check again
-		while(! shape_publisher.getNumSubscribers() > 0){
+		while(! shape_publisher.getNumSubscribers() > 0)
+		{
     		ros::spinOnce(); // Spin once to update
 		}
 		
@@ -162,15 +260,22 @@ public:
 		led1_pub = nh.advertise<kobuki_msgs::Led>("mobile_base/commands/led1", 1);
 		led2_pub = nh.advertise<kobuki_msgs::Led>("mobile_base/commands/led2", 1);
 		
+		chukwa_shape_timer = nh.createTimer(ros::Duration(0.05),  &Chukwashape::publishing, this);
+		chukwa_move_pub = nh.advertise<geometry_msgs::Twist>("mobile_base/commands/velocity", 1);
+		chukwa_sound_pub = nh.advertise<kobuki_msgs::Sound>("mobile_base/commands/sound", 1);
+		chukwa_twist.linear.x = 0.125;
+		chukwa_sound.value=1;
+		chukwa_shape_timer.stop();
+
+		
+
 		// make sure party is not started
 		startParty = 0;
 
 		// All the shapes
-		shapes[0].name = "HEART";
-		shapes[0].est_time = 5;
+		shapes[0].name = "SQUARE";
+		shapes[1].name = "DIAMOND";
 
-		shapes[1].name = "SQUARE";
-		shapes[1].est_time = 4;
 
 		// Publish shapes first time to make interface updated
 		publishShapes();
