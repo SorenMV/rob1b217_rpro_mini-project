@@ -1,8 +1,13 @@
 #include <ros/ros.h>
-#include "std_msgs/String.h"
-#include <sstream>
-#include <vector>
 
+// For the messages between nodes
+#include "std_msgs/String.h"
+
+// For splitting strings
+#include <sstream>
+
+// For the shape vector (Unkown size)
+#include <vector>
 
 
 using namespace std;
@@ -10,32 +15,39 @@ using namespace std;
 class Chukwaface
 {
 private:
+	// Initialize variables
 	ros::NodeHandle nh;
 	ros::Subscriber sub_from_shape;
 	ros::Publisher command_pub;
 	vector<string> shapes;
 
-	
+	// This function gets called when topic is recieved (the shapes are updated) 
+	// and puts them into a vector
 	void callback_shape(const std_msgs::String shapes_str)
 	{
 		string str(shapes_str.data.c_str());
 		string buf;
 		stringstream ss(str);
 
+		// Stringstream splits the string by spaces
 		while(ss >> buf) 
 		{
-			shapes.push_back(buf);
+			shapes.push_back(buf); // Put the buffer into the vactor
 		}
 	}
 
-	void showShapes()
+	// This function gets called when you choose "Shapes" in menu
+ 	void showShapes()
 	{
+		// For the choice later
 		int choice;
+		
 		do
 		{
-			ros::spinOnce();
+			ros::spinOnce(); // Spin once to update the topic
 			system("clear");
 			cout << "*************************" << "\n";
+			
 			if(shapes.empty())
 			{
 				cout << "No shapes available." << "\n";
@@ -43,6 +55,8 @@ private:
 			else
 			{
 				int count = 1;
+
+				// Use an iterrator to split vector in to a string
 				for (vector<string>::iterator i = shapes.begin(); i != shapes.end(); ++i)
 				{
 					cout << count++ << " - " << *i << "\n";
@@ -53,17 +67,18 @@ private:
 		  	
 			cin >> choice;
 
-			//
+			// TODO: Publish a choice
 	
 		}while(choice != 0 && ros::ok());
 	}
 
+	// This function gets called when user wants to change the LEDs
 	void showChangeLeds()
 	{
 		int choice;
 		do
 		{
-			ros::spinOnce();
+			// "Clear" the screen and show choices
 			system("clear");
 			cout << "*************************" << "\n";
 			cout << "1 - Toggle led1" << "\n";
@@ -75,11 +90,12 @@ private:
 		  	
 			cin >> choice;
 			
+			// Publish the choice to "Chukwashape" so it can change the LEDs
 			std_msgs::String command;
 			switch(choice)
 			{
 				case(1):
-					command.data = "LED 1";
+					command.data = "LED 1"; 
 					break;
 				case(2):
 					command.data = "LED 2";
@@ -89,21 +105,21 @@ private:
 					break;
 			}
 
+			// publish the LED command
 			command_pub.publish(command);
 			
 		} while(choice != 0 && ros::ok());
-		
-
-		
+			
 	}
 
-	
+	// This function gets called when user wants to see "About"
 	void showAbout()
 	{
 		int choice;
 	   	
 		do
 		{
+			// "Clear" and display the content
 			system("clear");
 			cout << "*************************" << "\n"
 				 << "This program is made by: B217" << "\n"
@@ -123,7 +139,7 @@ private:
 		}while(choice != 0 && ros::ok());
 	}
 
-
+	// This function gets called when user wants to see "Help" 
 	void showHelp()
 	{
 		int choice;
@@ -142,13 +158,15 @@ private:
 		}while(choice != 0 && ros::ok());
 	}
 
+	// This function gets called to start the interface
 	void start()
 	{
 		int choice;
 	   	
+	   	// Do this first then check for condition
 		do
 		{
-			ros::spinOnce();
+			ros::spinOnce(); // Spin once to update
 			system("clear");
 			cout << "*************************" << "\n"
 				 << "1 - Show Shapes" << "\n"
@@ -160,6 +178,7 @@ private:
 		  	
 			cin >> choice;
 
+			// Check for choice and run the correct function
 			switch(choice)
 			{
 			 	case(1):
@@ -180,12 +199,16 @@ private:
 	}
 
 public:
+	// Constructor
 	Chukwaface()
 	{
+		// Subscribe to get the possible shapes
 		sub_from_shape = nh.subscribe<std_msgs::String>("Chukwa_shapes", 10, &Chukwaface::callback_shape, this);
+		
+		// Publish the commands to the "Shape" node
 		command_pub = nh.advertise<std_msgs::String>("Chukwashape_trigger", 10);
 		
-
+		// Run the start function to show first interface
 		start();
 	};
 	
@@ -195,9 +218,10 @@ int main(int argc, char *argv[])
 {
 	ros::init(argc, argv, "Chukwaface");
 
-	
+	// Construct the class
 	Chukwaface Chukwa_face;
 
-	ros::spin();//loop until closed
+	//loop until closed
+	ros::spin();
 	return 0;
 }
