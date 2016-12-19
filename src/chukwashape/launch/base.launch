@@ -1,0 +1,8 @@
+<launch>
+	<include file="$(find kobuki_node)/launch/minimal.launch" />
+	
+
+	<node pkg="chukwashape" type="chukwashape_node" name="chukwashape_node" />
+	<node pkg="chukwaface" type="chukwaface_node" name="chukwaface_node" output="screen" />
+
+</launch>
