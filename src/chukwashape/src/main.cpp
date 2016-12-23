@@ -84,6 +84,10 @@ private:
 		{
 			controlLEDs(command_rest);
 		}
+		else if(command_name ==  "SOUND")
+		{
+			playSounds(command_rest);
+		}
 	}
 
 	// Make the Chukwa move in a shape
@@ -165,6 +169,8 @@ private:
 		//reset timer
 		counter_for_timer = 0;
 
+		// choose Kobuki sound
+		chukwa_sound.value=1;
 		//play sound from kobuki
 		chukwa_sound_pub.publish(chukwa_sound);
 
@@ -224,6 +230,13 @@ private:
 		}
 	}
 
+	void playSounds(const string& shape)
+	{
+		// choose Kobuki sound
+		chukwa_sound.value = atoi(shape.c_str()) - 1; //convert string into int (-1 is because of indexing from 0)
+		chukwa_sound_pub.publish(chukwa_sound);
+	}
+
 	// This function publishes all the possible shape's name as a string with spaces
 	// Ex: "SQUARE DIAMOND"
 	void publishShapes()
@@ -274,8 +287,6 @@ public:
 		// create party timer
 		party_timer = nh.createTimer( ros::Duration(0.1), &Chukwashape::callParty, this);
 
-		// choose Kobuki sound
-		chukwa_sound.value=1;
 
 		chukwa_shape_timer.stop();
 		counter_for_timer=0;

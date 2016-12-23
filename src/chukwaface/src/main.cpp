@@ -130,6 +130,64 @@ private:
 			
 	}
 
+	void showSounds()
+	{
+		// "Clear" the screen and show choices
+		system("clear");
+		cout	<< "*************************\n"
+				<< "Choose sound to play:\n"
+				<< "1 - turn on\n"
+				<< "2 - turn off\n"
+				<< "3 - recharge start\n"
+				<< "4 - press button\n"
+				<< "5 - error sound\n"
+				<< "6 - start cleaning\n"
+				<< "7 - cleaning end\n"
+				<< "0 - Back\n"
+				<< "*************************\n";
+
+		do
+		{
+			cin >> choice;
+
+			// Publish the choice to "Chukwashape" so it can change the LEDs
+			switch(choice)
+			{
+				case('1'):
+					command.data = "SOUND 1"; 
+					break;
+				case('2'):
+					command.data = "SOUND 2";
+					break;
+				case('3'):
+					command.data = "SOUND 3";
+					break;
+				case('4'):
+					command.data = "SOUND 4"; 
+					break;
+				case('5'):
+					command.data = "SOUND 5";
+					break;
+				case('6'):
+					command.data = "SOUND 6";
+					break;
+				case('7'):
+					command.data = "SOUND 7"; 
+					break;
+				case('0'):
+					start();
+					break;
+				default:
+					ROS_WARN("'%c' is not a valid input!", choice);
+			}
+
+			// publish the LED command
+			command_pub.publish(command);
+
+		} while(ros::ok());
+			
+	}
+
 	// This function gets called when user wants to see "About"
 	void showAbout()
 	{
@@ -196,7 +254,8 @@ private:
 		cout	<< "*************************\n"
 				<< "1 - Show Shapes\n"
 				<< "2 - Change LEDs\n"
-				<< "3 - About\n"
+				<< "3 - Play Sounds\n"
+				<< "8 - About\n"
 				<< "9 - Help\n"
 				<< "0 - EXIT\n"
 				<< "*************************\n";
@@ -214,6 +273,9 @@ private:
 					showChangeLeds();
 					break;
 				case('3'):
+					showSounds();
+					break;	
+				case('8'):
 					showAbout();
 					break;
 				case('9'):
