@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 // For the messages between nodes
-#include "std_msgs/String.h"
+#include <std_msgs/String.h>
 
 // For splitting strings
 #include <sstream>
@@ -20,6 +20,7 @@
 
 // Count of predefined shapes
 #define shapes_count 2
+#define max_steps 11 //maximum number of step for shapes
 
 using namespace std;
 
@@ -35,28 +36,30 @@ private:
 	ros::Publisher led2_pub;
 	ros::Publisher party_pub;
 	ros::Publisher chukwa_move_pub;
-  	ros::Timer chukwa_shape_timer;
-  	ros::Publisher chukwa_sound_pub;
+	ros::Publisher chukwa_sound_pub;
+	ros::Timer chukwa_shape_timer;
 	ros::Timer party_timer;
+
+	geometry_msgs::Twist chukwa_twist;
+	kobuki_msgs::Sound chukwa_sound;
 	kobuki_msgs::Led led1;
 	kobuki_msgs::Led led2;
 
-	geometry_msgs::Twist chukwa_twist;
-  	kobuki_msgs::Sound chukwa_sound;
-
-  	bool startParty;
+	bool startParty;
 	int step, counter_for_timer;
 
 
-  	int pattern[10][2]={{100,0},{0,47},{100,0},{0,47},{100,0},{0,47},{100,0},{0,47}};
-	int diamond[10][2]={{150,0},{0,43},{24,0},{0,20},{52,0},{0,20},{24,0},{0,43},{65,0},{0,43}};
-	int square[8][2]={{100,0},{0,47},{100,0},{0,47},{100,0},{0,47},{100,0},{0,47}};
+	int pattern[max_steps][2],
+		square[max_steps][2]={{100,0},{0,47},{100,0},{0,47},{100,0},{0,47},{100,0},{0,47}},
+		diamond[max_steps][2]={{150,0},{0,43},{24,0},{0,20},{52,0},{0,20},{24,0},{0,43},{65,0},{0,43}};
 
 
 	// Struct with the shapes (Known size)
-	struct ShapeStruct{
+	struct ShapeStruct
+	{
 		string name;
-	} shapes[shapes_count];
+	}
+	shapes[shapes_count];
 
 	// When a command is published by interface
 	void callback_face(const std_msgs::String command_send)
@@ -71,19 +74,10 @@ private:
 
 		// Output recived command (for debugging)
 		ROS_INFO("Recieved: \n name: %s \n data: %s", command_name.c_str(), command_rest.c_str());
-		
+
 		// Check the diffrent command names and call the function
-		if(command_name == "MOVE")
+		if(command_name == "SHAPE")
 		{
-			moveChukwa(command_rest);
-		}
-		else if(command_name == "UPDATE")
-		{
-			publishShapes();
-		}	
-		else if(command_name == "SHAPE")
-		{	
-				publishShapes();
 			moveChukwa(command_rest);
 		}
 		else if(command_name ==  "LED")
@@ -97,78 +91,94 @@ private:
 	{
 		if (shape == "1")
 		{
-			//copy_array(square, pattern);
+			copy_array(square, pattern);
 			chukwa_shape_timer.start();
 		}
-		else
-		if (shape == "2")
+		else if (shape == "2")
 		{
 			copy_array(diamond, pattern);
 			chukwa_shape_timer.start();
 		}
+		step = 0;
+		counter_for_timer++;
 	}
 
-	void copy_array(int copyfrom[][2], int copyto[][2])
+	void copy_array(int copyfrom[max_steps][2], int copyto[max_steps][2])
 	{
-	for (int i = 1; i < 11; ++i)
-	{
-	  for (int j = 1; j < 3; ++j)
-	  {
-	    copyto[i][j]=copyfrom[i][j];
-	  }
-	}
+		for (int i = 0; i < max_steps; ++i)
+		{
+			for (int j = 0; j < 2; ++j)
+			{
+				copyto[i][j]=copyfrom[i][j];
+			}
+		}
 	}
 
 	void publishing(const ros::TimerEvent&)
-  {
+	{
+		//set speed based on instructions from 2D array
+		//forward
+		if (pattern[step][0] != 0 && pattern[step][1] == 0)
+		{
+			chukwa_twist.linear.x = 0.125;
+			chukwa_twist.angular.z = 0;
+		}
+		//turn
+		else if (pattern[step][0] == 0 && pattern[step][1] != 0)
+		{
+			chukwa_twist.linear.x = 0;
+			chukwa_twist.angular.z = 0.7853981633974483;
+		}
+		else if (pattern[step][0] == 0 && pattern[step][1] == 0)
+		//nothing
+		{
+			chukwa_twist.linear.x = 0;
+			chukwa_twist.angular.z = 0;
+		}
 
-    //moving forward
-    if (pattern[step][1] == 0 && counter_for_timer > pattern[step][0])
-    {
-      next_step();
-    }
-    else
-    //turning
-    if (pattern[step][0] == 0 && counter_for_timer > pattern[step][1])
-    {
-      next_step();
-    }
 
-    chukwa_move_pub.publish(chukwa_twist);
-    counter_for_timer++;
-  }
+	//go to next step when needed
+		if (pattern[step][0] == 0 && pattern[step][1] == 0)
+		{
+			next_step();
+		}
+		//forward
+		else if (pattern[step][0] != 0 && pattern[step][1] == 0 && counter_for_timer > pattern[step][0])
+		{
+			next_step();
+		}
+		//turn
+		else if (pattern[step][0] == 0 && pattern[step][1] != 0 && counter_for_timer > pattern[step][1])
+		{
+			next_step();
+		}
+		//publish speed
+		chukwa_move_pub.publish(chukwa_twist);
+		//count up
+		counter_for_timer++;
+	}
 
-  void next_step()
-  {
-    if (step < sizeof(pattern)/sizeof(pattern)[0])
-    {
-    step++;
-    counter_for_timer = 0;
+	void next_step()
+	{
+		//go to next step in 2D array
+		step++;
+		//reset timer
+		counter_for_timer = 0;
 
-    chukwa_sound_pub.publish(chukwa_sound);
+		//play sound from kobuki
+		chukwa_sound_pub.publish(chukwa_sound);
 
-    ros::Duration(1).sleep();
-
-    //moving forward
-    if (pattern[step][1] == 0)
-    {
-      chukwa_twist.linear.x   = 0.25;
-      chukwa_twist.angular.z   = 0;
-    }
-
-    //turning
-    if (pattern[step][0] == 0)
-    {
-      chukwa_twist.linear.x   = 0;
-      chukwa_twist.angular.z   = 0.7853981633974483;
-    }
-    }
-    else
-      {
-        chukwa_shape_timer.stop();
-        step=0;
-      }
-  }
+		//if no further commands in array (both are 0s), stop the timer and reset values
+		if (pattern[step][0] == 0 && pattern[step][1] == 0)
+		{
+			chukwa_twist.linear.x = 0;
+			chukwa_twist.angular.z = 0;
+			step = 0;
+			chukwa_shape_timer.stop();
+		}
+		//wait for 1s
+		ros::Duration(1).sleep();
+	}
 
 	// Called to control the LEDs
 	void controlLEDs(const string& led)
@@ -192,7 +202,7 @@ private:
 		else if(led == "PARTY")
 		{
 			// Change to opposit
-			startParty = !startParty; // Used for timer
+			startParty = !startParty; // Used for timer //why dont you just stop/start timer?
 		}
 	}
 
@@ -209,7 +219,6 @@ private:
 			RED     = 3 */
 			led1.value = rand() % 4; // Change led1 to a random value between 0-3
 			led1_pub.publish(led1);
-					
 			led2.value = rand() % 4; // Change led1 to a random value between 0-3
 			led2_pub.publish(led2);
 		}
@@ -237,9 +246,9 @@ private:
 		// If no subscribers spin once and check again
 		while(! shape_publisher.getNumSubscribers() > 0)
 		{
-    		ros::spinOnce(); // Spin once to update
+			ros::spinOnce(); // Spin once to update
 		}
-		
+
 		// publish the shape string to interface node
 		shape_publisher.publish(all_shapes);
 	}
@@ -247,27 +256,29 @@ public:
 	// Constructor
 	Chukwashape()
 	{
-		// to publish the shape string to interface
-		shape_publisher = nh.advertise<std_msgs::String>("Chukwa_shapes", 1);
-
 		// to get the commands from interface
 		sub_from_face = nh.subscribe<std_msgs::String>("Chukwashape_trigger", 10, &Chukwashape::callback_face, this);
 
-		// create party timer
-		party_timer = nh.createTimer( ros::Duration(0.1), &Chukwashape::callParty, this);
-
+		// to publish the shape string to interface
+		shape_publisher = nh.advertise<std_msgs::String>("Chukwa_shapes", 1);
+		// to send velocity commands
+		chukwa_move_pub = nh.advertise<geometry_msgs::Twist>("mobile_base/commands/velocity", 1);
+		// to play sounds from Kobuki
+		chukwa_sound_pub = nh.advertise<kobuki_msgs::Sound>("mobile_base/commands/sound", 1);
 		// To change the individual LEDs
 		led1_pub = nh.advertise<kobuki_msgs::Led>("mobile_base/commands/led1", 1);
 		led2_pub = nh.advertise<kobuki_msgs::Led>("mobile_base/commands/led2", 1);
-		
-		chukwa_shape_timer = nh.createTimer(ros::Duration(0.05),  &Chukwashape::publishing, this);
-		chukwa_move_pub = nh.advertise<geometry_msgs::Twist>("mobile_base/commands/velocity", 1);
-		chukwa_sound_pub = nh.advertise<kobuki_msgs::Sound>("mobile_base/commands/sound", 1);
-		chukwa_twist.linear.x = 0.125;
-		chukwa_sound.value=1;
-		chukwa_shape_timer.stop();
 
-		
+		// draw shapes
+		chukwa_shape_timer = nh.createTimer(ros::Duration(0.05),  &Chukwashape::publishing, this);
+		// create party timer
+		party_timer = nh.createTimer( ros::Duration(0.1), &Chukwashape::callParty, this);
+
+		// choose Kobuki sound
+		chukwa_sound.value=1;
+
+		chukwa_shape_timer.stop();
+		counter_for_timer=0;
 
 		// make sure party is not started
 		startParty = 0;
@@ -276,11 +287,9 @@ public:
 		shapes[0].name = "SQUARE";
 		shapes[1].name = "DIAMOND";
 
-
 		// Publish shapes first time to make interface updated
 		publishShapes();
 	};
-	
 };
 
 int main(int argc, char *argv[])
