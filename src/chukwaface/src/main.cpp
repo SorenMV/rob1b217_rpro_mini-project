@@ -67,22 +67,22 @@ private:
 		{
 			cin >> choice;
 
-		switch(choice)
-			{
-				case('1'):
-					command.data = "SHAPE 1";
-					break;
-				case('2'):
-					command.data = "SHAPE 2";
-					break;
-				case('0'):
-					start();
-					break;
-				default:
-					ROS_WARN("'%c' is not a valid input!", choice);
-			}
+			switch(choice)
+				{
+					case('1'):
+						command.data = "SHAPE 1";
+						break;
+					case('2'):
+						command.data = "SHAPE 2";
+						break;
+					case('0'):
+						start();
+						break;
+					default:
+						ROS_WARN("'%c' is not a valid input!", choice);
+				}
 
-			// publish the SHAPE command
+				// publish the SHAPE command
 			command_pub.publish(command);
 
 		}while(ros::ok());
@@ -178,6 +178,7 @@ private:
 					start();
 					break;
 				default:
+					command.data = "SOUND"; 
 					ROS_WARN("'%c' is not a valid input!", choice);
 			}
 
@@ -252,12 +253,12 @@ private:
 		// Do this first then check for condition
 		system("clear");
 		cout	<< "*************************\n"
-				<< "1 - Show Shapes\n"
-				<< "2 - Change LEDs\n"
-				<< "3 - Play Sounds\n"
-				<< "8 - About\n"
-				<< "9 - Help\n"
-				<< "0 - EXIT\n"
+				<< "1  - Show Shapes\n"
+				<< "2  - Change LEDs\n"
+				<< "3  - Play Sounds\n"
+				<< "8  - About\n"
+				<< "9  - Help\n"
+				<< "^C - EXIT\n"
 				<< "*************************\n";
 		do
 		{
@@ -280,9 +281,6 @@ private:
 					break;
 				case('9'):
 					showHelp();
-					break;
-				case('0'):
-					ros::shutdown();
 					break;
 				default:
 					ROS_WARN("'%c' is not a valid input!", choice);

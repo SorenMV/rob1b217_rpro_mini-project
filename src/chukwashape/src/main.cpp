@@ -40,6 +40,7 @@ private:
 	ros::Timer chukwa_shape_timer;
 	ros::Timer party_timer;
 
+	std_msgs::String all_shapes;
 	geometry_msgs::Twist chukwa_twist;
 	kobuki_msgs::Sound chukwa_sound;
 	kobuki_msgs::Led led1;
@@ -170,7 +171,7 @@ private:
 		counter_for_timer = 0;
 
 		// choose Kobuki sound
-		chukwa_sound.value=1;
+		chukwa_sound.value = 6;
 		//play sound from kobuki
 		chukwa_sound_pub.publish(chukwa_sound);
 
@@ -234,6 +235,7 @@ private:
 	{
 		// choose Kobuki sound
 		chukwa_sound.value = atoi(shape.c_str()) - 1; //convert string into int (-1 is because of indexing from 0)
+
 		chukwa_sound_pub.publish(chukwa_sound);
 	}
 
@@ -241,7 +243,6 @@ private:
 	// Ex: "SQUARE DIAMOND"
 	void publishShapes()
 	{
-		std_msgs::String all_shapes;
 		stringstream ss;
 
 		// Go through the struct
@@ -252,9 +253,6 @@ private:
 
 		// Put the string into the message.data to publish
 		all_shapes.data = ss.str();
-
-		// Make sure Interface is subscribed
-		shape_publisher.getNumSubscribers();
 
 		// If no subscribers spin once and check again
 		while(! shape_publisher.getNumSubscribers() > 0)
@@ -274,6 +272,7 @@ public:
 
 		// to publish the shape string to interface
 		shape_publisher = nh.advertise<std_msgs::String>("Chukwa_shapes", 1);
+
 		// to send velocity commands
 		chukwa_move_pub = nh.advertise<geometry_msgs::Twist>("mobile_base/commands/velocity", 1);
 		// to play sounds from Kobuki
@@ -287,16 +286,15 @@ public:
 		// create party timer
 		party_timer = nh.createTimer( ros::Duration(0.1), &Chukwashape::callParty, this);
 
-
-		chukwa_shape_timer.stop();
-		counter_for_timer=0;
-
-		// make sure party is not started
-		startParty = 0;
-
 		// All the shapes
 		shapes[0].name = "SQUARE";
 		shapes[1].name = "DIAMOND";
+
+		counter_for_timer = 0;
+		// make sure party is not started
+		startParty = 0;
+
+		chukwa_shape_timer.stop();
 
 		// Publish shapes first time to make interface updated
 		publishShapes();
