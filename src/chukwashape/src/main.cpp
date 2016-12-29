@@ -132,7 +132,7 @@ private:
 		else if (pattern[step][0] == 0 && pattern[step][1] != 0)
 		{
 			chukwa_twist.linear.x = 0;
-			chukwa_twist.angular.z = 0.7853981633974483;
+			chukwa_twist.angular.z = 0.785;
 		}
 		else if (pattern[step][0] == 0 && pattern[step][1] == 0)
 		//nothing
